@@ -28,7 +28,7 @@
    ```php
    'providers' => [
        // Otros providers...
-       TuNombre\MiPaquete\MiPaqueteServiceProvider::class,
+       SolivellaLuisAlberto\LaravelMakeFiltersAndSorts\MakeFiltersAndSortsServiceProvider::class,
    ],
    ```
 
