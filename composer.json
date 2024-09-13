@@ -2,16 +2,23 @@
     "name": "solivellaluisalberto/laravelmakefiltersandsorts",
     "description": "Paquete Laravel para aplicar de manera eficiente filtros avanzados y ordenamientos dinámicos a consultas Eloquent a partir de parámetros de solicitudes HTTP.",
     "type": "library",
+    "keywords": [
+        "solivellaluisalberto",
+        "php",
+        "filters",
+        "sorts",
+        "laravel filters and sorts"
+    ],
     "license": "MIT",
     "authors": [
         {
             "name": "Luis Alberto Murcia Solivella",
-            "email": "solivella.luisalberto@gmail.com"
+            "email": "solivella.luisalberto@gmail.com",
+            "homepage": "https://fasesdesarrollo.es"
         }
     ],
     "require": {
-        "php": ">=7.4",
-        "illuminate/support": "^11.23"
+        "php": "^8.0"
     },
     "autoload": {
         "psr-4": {
