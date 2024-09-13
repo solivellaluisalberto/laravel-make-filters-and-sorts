@@ -42,7 +42,7 @@ El paquete incluye una función estática `sanitizeFiltersAndSorts` que toma una
 
 ```php
 use Illuminate\Http\Request;
-use TuNombre\MiPaquete\FilterService;
+use SolivellaLuisAlberto\LaravelMakeFiltersAndSorts\FilterService;
 
 class ExampleController extends Controller
 {
