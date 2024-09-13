@@ -1,6 +1,6 @@
 <?php
 
-namespace solivellaluis\laravelmakefiltersandsorts;
+namespace SolivellaLuisAlberto\LaravelMakeFiltersAndSorts;
 
 use Illuminate\Support\ServiceProvider;
 
