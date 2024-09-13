@@ -1,6 +1,6 @@
 <?php
 
-namespace solivellaluis\laravelmakefiltersandsorts;
+namespace SolivellaLuisAlberto\LaravelMakeFiltersAndSorts;
 
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;

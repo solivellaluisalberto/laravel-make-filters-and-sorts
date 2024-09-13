@@ -22,13 +22,13 @@
     },
     "autoload": {
         "psr-4": {
-            "solivellaluisalberto\\laravelmakefiltersandsorts\\": "src/"
+            "SolivellaLuisAlberto\\LaravelMakeFiltersAndSorts\\": "src/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "solivellaluisalberto\\laravelmakefiltersandsorts\\MakeFiltersAndSortsServiceProvider"
+                "SolivellaLuisAlberto\\LaravelMakeFiltersAndSorts\\MakeFiltersAndSortsServiceProvider"
             ]
         }
     }

@@ -4,7 +4,7 @@ namespace solivellaluis\laravelmakefiltersandsorts;
 
 use Illuminate\Support\ServiceProvider;
 
-class MiPaqueteServiceProvider extends ServiceProvider
+class MakeFiltersAndSortsServiceProvider extends ServiceProvider
 {
     /**
      * Bootstrap the application services.
