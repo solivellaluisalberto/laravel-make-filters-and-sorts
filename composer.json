@@ -1,6 +1,6 @@
 {
-    "name": "solivellaluis/makefiltersandsorts",
-    "description": "Un paquete Laravel para aplicar filtros y ordenamientos",
+    "name": "solivellaluisalberto/laravelmakefiltersandsorts",
+    "description": "Paquete Laravel para aplicar de manera eficiente filtros avanzados y ordenamientos dinámicos a consultas Eloquent a partir de parámetros de solicitudes HTTP.",
     "type": "library",
     "license": "MIT",
     "authors": [
@@ -15,13 +15,13 @@
     },
     "autoload": {
         "psr-4": {
-            "solivellaluis\\makefiltersandsorts\\": "src/"
+            "solivellaluisalberto\\laravelmakefiltersandsorts\\": "src/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "solivellaluis\\makefiltersandsorts\\MakeFiltersAndSortsServiceProvider"
+                "solivellaluisalberto\\laravelmakefiltersandsorts\\MakeFiltersAndSortsServiceProvider"
             ]
         }
     }
