@@ -18,11 +18,21 @@
         }
     ],
     "require": {
-        "php": "^8.0"
+        "php": "^8.1|^8.2|^8.3"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.0|^10.0|^11.0",
+        "orchestra/testbench": "^7.0|^8.0|^9.0|^10.0",
+        "mockery/mockery": "^1.4"
     },
     "autoload": {
         "psr-4": {
             "SolivellaLuisAlberto\\LaravelMakeFiltersAndSorts\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SolivellaLuisAlberto\\LaravelMakeFiltersAndSorts\\Tests\\": "tests/"
         }
     },
     "extra": {
@@ -31,5 +41,8 @@
                 "SolivellaLuisAlberto\\LaravelMakeFiltersAndSorts\\MakeFiltersAndSortsServiceProvider"
             ]
         }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit"
     }
 }
