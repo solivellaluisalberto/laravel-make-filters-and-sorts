@@ -70,36 +70,53 @@ class FilterService
             $operator = $filter['operator'];
             $value = $filter['value'];
 
+            // Obtener el nombre de la tabla base para evitar ambigüedad en JOINs
+            $tableName = $query instanceof Builder 
+                ? $query->getModel()->getTable()  // Eloquent Builder: obtener desde el modelo
+                : $query->from;                    // Query Builder: obtener desde la propiedad from
+
             // Aplicar el filtro según el operador
             if (in_array($operator, ['=', '!=', '>', '<', '>=', '<='])) {
-                // Operadores de comparación estándar
-                $query->where($column, $operator, $value);
+                // Operadores de comparación estándar - prefijar con tabla para evitar ambigüedad
+                $qualifiedColumn = $tableName . '.' . $column;
+                $query->where($qualifiedColumn, $operator, $value);
                 
             } elseif ($operator === 'like') {
                 // Operador LIKE: permite búsqueda en múltiples columnas separadas por |
                 // Ejemplo: 'name|email' buscará en ambas columnas
                 $columns = explode('|', $column);
-                $query->where(function($query) use ($value, $columns) {
+                
+                // Obtener el nombre de la tabla base para evitar ambigüedad en JOINs
+                $tableName = $query instanceof Builder 
+                    ? $query->getModel()->getTable()  // Eloquent Builder: obtener desde el modelo
+                    : $query->from;                    // Query Builder: obtener desde la propiedad from
+                
+                $query->where(function($query) use ($value, $columns, $tableName) {
                     foreach ($columns as $index => $column) {
+                        // Prefijar con el nombre de la tabla para evitar ambigüedad
+                        $qualifiedColumn = $tableName . '.' . $column;
+                        
                         if ($index === 0) {
                             // Primera columna: WHERE
-                            $query->where($column, 'like', '%' . $value . '%');
+                            $query->where($qualifiedColumn, 'like', '%' . $value . '%');
                         } else {
                             // Columnas adicionales: OR WHERE
-                            $query->orWhere($column, 'like', '%' . $value . '%');
+                            $query->orWhere($qualifiedColumn, 'like', '%' . $value . '%');
                         }
                     }
                 });
                 
             } elseif ($operator === 'in') {
                 // Operador IN: verifica si el valor está en un array
-                // Ejemplo: status IN (1, 2, 3)
-                $query->whereIn($column, $value);
+                // Ejemplo: status IN (1, 2, 3) - prefijar con tabla para evitar ambigüedad
+                $qualifiedColumn = $tableName . '.' . $column;
+                $query->whereIn($qualifiedColumn, $value);
                 
             } elseif ($operator === 'between') {
                 // Operador BETWEEN: verifica si el valor está en un rango
-                // Ejemplo: price BETWEEN 100 AND 500
-                $query->whereBetween($column, $value);
+                // Ejemplo: price BETWEEN 100 AND 500 - prefijar con tabla para evitar ambigüedad
+                $qualifiedColumn = $tableName . '.' . $column;
+                $query->whereBetween($qualifiedColumn, $value);
             }
         }
 

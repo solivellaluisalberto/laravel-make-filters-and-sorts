@@ -60,7 +60,7 @@ class FilterServiceTest extends TestCase
         $sql = $result->toSql();
         $bindings = $result->getBindings();
 
-        $this->assertStringContainsString('where "status" = ?', $sql);
+        $this->assertStringContainsString('where "reservations"."status" = ?', $sql);
         $this->assertEquals([1], $bindings);
     }
 
@@ -78,7 +78,7 @@ class FilterServiceTest extends TestCase
         $sql = $result->toSql();
         $bindings = $result->getBindings();
 
-        $this->assertStringContainsString('where "price" > ?', $sql);
+        $this->assertStringContainsString('where "reservations"."price" > ?', $sql);
         $this->assertEquals([100], $bindings);
     }
 
@@ -96,7 +96,7 @@ class FilterServiceTest extends TestCase
         $sql = $result->toSql();
         $bindings = $result->getBindings();
 
-        $this->assertStringContainsString('where ("name" like ?)', $sql);
+        $this->assertStringContainsString('where ("reservations"."name" like ?)', $sql);
         $this->assertEquals(['%test%'], $bindings);
     }
 
@@ -114,8 +114,8 @@ class FilterServiceTest extends TestCase
         $sql = $result->toSql();
         $bindings = $result->getBindings();
 
-        $this->assertStringContainsString('where ("name" like ?', $sql);
-        $this->assertStringContainsString('or "email" like ?)', $sql);
+        $this->assertStringContainsString('where ("reservations"."name" like ?', $sql);
+        $this->assertStringContainsString('or "reservations"."email" like ?)', $sql);
         $this->assertEquals(['%test%', '%test%'], $bindings);
     }
 
@@ -133,7 +133,7 @@ class FilterServiceTest extends TestCase
         $sql = $result->toSql();
         $bindings = $result->getBindings();
 
-        $this->assertStringContainsString('where "status" in (?, ?, ?)', $sql);
+        $this->assertStringContainsString('where "reservations"."status" in (?, ?, ?)', $sql);
         $this->assertEquals([1, 2, 3], $bindings);
     }
 
@@ -151,7 +151,7 @@ class FilterServiceTest extends TestCase
         $sql = $result->toSql();
         $bindings = $result->getBindings();
 
-        $this->assertStringContainsString('where "price" between ? and ?', $sql);
+        $this->assertStringContainsString('where "reservations"."price" between ? and ?', $sql);
         $this->assertEquals([100, 500], $bindings);
     }
 
@@ -256,9 +256,9 @@ class FilterServiceTest extends TestCase
 
         $sql = $result->toSql();
 
-        $this->assertStringContainsString('where "status" = ?', $sql);
-        $this->assertStringContainsString('"name" like ?', $sql);
-        $this->assertStringContainsString('or "email" like ?', $sql);
+        $this->assertStringContainsString('where "reservations"."status" = ?', $sql);
+        $this->assertStringContainsString('"reservations"."name" like ?', $sql);
+        $this->assertStringContainsString('or "reservations"."email" like ?', $sql);
         $this->assertStringContainsString('order by "created_at" desc', $sql);
     }
 
@@ -276,7 +276,7 @@ class FilterServiceTest extends TestCase
 
         $sql = $result->toSql();
 
-        $this->assertStringContainsString('where "name" = ?', $sql);
+        $this->assertStringContainsString('where "reservations"."name" = ?', $sql);
     }
 
     public function test_sin_filtros_ni_ordenamientos_devuelve_query_sin_cambios()
@@ -341,7 +341,7 @@ class FilterServiceTest extends TestCase
         $bindings = $result->getBindings();
 
         // Solo debe aplicar el filtro válido
-        $this->assertStringContainsString('where "status" = ?', $sql);
+        $this->assertStringContainsString('where "reservations"."status" = ?', $sql);
         $this->assertEquals([1], $bindings);
     }
 
@@ -361,7 +361,7 @@ class FilterServiceTest extends TestCase
         $bindings = $result->getBindings();
 
         // Solo debe aplicar el filtro válido
-        $this->assertStringContainsString('where "name" = ?', $sql);
+        $this->assertStringContainsString('where "reservations"."name" = ?', $sql);
         $this->assertEquals(['test'], $bindings);
     }
 
@@ -381,7 +381,7 @@ class FilterServiceTest extends TestCase
         $bindings = $result->getBindings();
 
         // Solo debe aplicar el filtro válido
-        $this->assertStringContainsString('where "name" = ?', $sql);
+        $this->assertStringContainsString('where "reservations"."name" = ?', $sql);
         $this->assertEquals(['test'], $bindings);
     }
 
@@ -529,7 +529,7 @@ class FilterServiceTest extends TestCase
         $bindings = $result->getBindings();
 
         // Solo debe aplicar el filtro válido
-        $this->assertStringContainsString('where "status" = ?', $sql);
+        $this->assertStringContainsString('where "reservations"."status" = ?', $sql);
         $this->assertEquals([1], $bindings);
     }
 
@@ -549,6 +549,45 @@ class FilterServiceTest extends TestCase
 
         // Solo debe aplicar el sort válido
         $this->assertStringContainsString('order by "name" asc', $sql);
+    }
+
+    public function test_filtro_con_join_evita_ambiguedad_de_columnas()
+    {
+        // Test que reproduce el problema: JOIN con categories y filtro LIKE en name|description
+        // Esto debería generar SQL sin ambigüedad usando tabla prefijada
+        $request = Request::create('/', 'GET', [
+            'filters' => [
+                ['column' => 'name|description', 'operator' => 'like', 'value' => 'a']
+            ],
+            'sorts' => [
+                [
+                    'order' => 'asc',
+                    'relationship' => [
+                        'table' => 'categories',
+                        'column' => 'name'
+                    ]
+                ]
+            ]
+        ]);
+
+        $query = Product::query();
+        $result = FilterService::makeFiltersAndSorts($request, $query);
+
+        $sql = $result->toSql();
+
+        // Verificar que el JOIN se aplica correctamente
+        $this->assertStringContainsString('inner join "categories" on "products"."category_id" = "categories"."id"', $sql);
+        
+        // Verificar que el filtro LIKE usa la tabla prefijada para evitar ambigüedad
+        $this->assertStringContainsString('where ("products"."name" like ?', $sql);
+        $this->assertStringContainsString('or "products"."description" like ?)', $sql);
+        
+        // Verificar que el ordenamiento usa la tabla de la relación
+        $this->assertStringContainsString('order by "categories"."name" asc', $sql);
+        
+        // Verificar que NO hay columnas ambiguas sin prefijo
+        $this->assertStringNotContainsString('where ("name" like ?', $sql);
+        $this->assertStringNotContainsString('or "description" like ?)', $sql);
     }
 }
 
