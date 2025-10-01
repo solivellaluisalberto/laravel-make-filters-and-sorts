@@ -32,6 +32,12 @@ class FilterService
      * - Simple: por columna directa
      * - Con relaciones: mediante JOIN automático
      * 
+     * Validaciones de seguridad:
+     * - Ignora parámetros malformados sin romper la aplicación
+     * - Valida que cada filtro tenga column, operator y value
+     * - Valida que cada sort tenga column y order válido
+     * - Valida relaciones con table y column requeridas
+     * 
      * @param Request $request La solicitud HTTP con los parámetros filters y sorts
      * @param Builder|\Illuminate\Database\Query\Builder $query La consulta a modificar (Eloquent o Query Builder)
      * @return Builder|\Illuminate\Database\Query\Builder La consulta modificada con filtros y ordenamientos
@@ -49,8 +55,17 @@ class FilterService
         $sorts = $request->input('sorts', []);
         $filters = $request->input('filters', []);
 
+        // Asegurar que sean arrays (Laravel puede devolver strings en casos edge)
+        $sorts = is_array($sorts) ? $sorts : [];
+        $filters = is_array($filters) ? $filters : [];
+
         // Procesar todos los filtros
         foreach ($filters as $filter) {
+            // Validar que el filtro sea un array y tenga las claves necesarias
+            if (!is_array($filter) || !isset($filter['column']) || !isset($filter['operator']) || !isset($filter['value'])) {
+                continue; // Saltar filtros inválidos
+            }
+
             $column = $filter['column'];
             $operator = $filter['operator'];
             $value = $filter['value'];
@@ -90,11 +105,26 @@ class FilterService
 
         // Procesar todos los ordenamientos
         foreach ($sorts as $sort) {
+            // Validar que el sort sea un array y tenga las claves necesarias
+            if (!is_array($sort) || !isset($sort['column']) || !isset($sort['order'])) {
+                continue; // Saltar ordenamientos inválidos
+            }
+
             $column = $sort['column'];
             $order = $sort['order'];
             $relationship = $sort['relationship'] ?? null;
 
+            // Validar que el order sea válido
+            if (!in_array(strtolower($order), ['asc', 'desc'])) {
+                continue; // Saltar ordenamientos con order inválido
+            }
+
             if ($relationship) {
+                // Validar que la relación tenga las claves necesarias
+                if (!is_array($relationship) || !isset($relationship['table']) || !isset($relationship['column'])) {
+                    continue; // Saltar relaciones inválidas
+                }
+
                 // Ordenamiento con relación: requiere un JOIN
                 
                 // Obtener dinámicamente el nombre de la tabla base

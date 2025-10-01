@@ -292,5 +292,239 @@ class FilterServiceTest extends TestCase
         $this->assertStringNotContainsString('where', $sql);
         $this->assertStringNotContainsString('order by', $sql);
     }
+
+    // Tests para validaciones de seguridad
+
+    public function test_filtros_no_array_son_ignorados()
+    {
+        $request = Request::create('/', 'GET', [
+            'filters' => 'invalid_string' // No es un array
+        ]);
+
+        $query = Reservation::query();
+        $result = FilterService::makeFiltersAndSorts($request, $query);
+
+        $sql = $result->toSql();
+
+        // No debe tener WHERE porque los filtros fueron ignorados
+        $this->assertStringNotContainsString('where', $sql);
+    }
+
+    public function test_sorts_no_array_son_ignorados()
+    {
+        $request = Request::create('/', 'GET', [
+            'sorts' => 'invalid_string' // No es un array
+        ]);
+
+        $query = Reservation::query();
+        $result = FilterService::makeFiltersAndSorts($request, $query);
+
+        $sql = $result->toSql();
+
+        // No debe tener ORDER BY porque los sorts fueron ignorados
+        $this->assertStringNotContainsString('order by', $sql);
+    }
+
+    public function test_filtro_sin_column_es_ignorado()
+    {
+        $request = Request::create('/', 'GET', [
+            'filters' => [
+                ['operator' => '=', 'value' => 1], // Falta 'column'
+                ['column' => 'status', 'operator' => '=', 'value' => 1] // Este sí es válido
+            ]
+        ]);
+
+        $query = Reservation::query();
+        $result = FilterService::makeFiltersAndSorts($request, $query);
+
+        $sql = $result->toSql();
+        $bindings = $result->getBindings();
+
+        // Solo debe aplicar el filtro válido
+        $this->assertStringContainsString('where "status" = ?', $sql);
+        $this->assertEquals([1], $bindings);
+    }
+
+    public function test_filtro_sin_operator_es_ignorado()
+    {
+        $request = Request::create('/', 'GET', [
+            'filters' => [
+                ['column' => 'status', 'value' => 1], // Falta 'operator'
+                ['column' => 'name', 'operator' => '=', 'value' => 'test'] // Este sí es válido
+            ]
+        ]);
+
+        $query = Reservation::query();
+        $result = FilterService::makeFiltersAndSorts($request, $query);
+
+        $sql = $result->toSql();
+        $bindings = $result->getBindings();
+
+        // Solo debe aplicar el filtro válido
+        $this->assertStringContainsString('where "name" = ?', $sql);
+        $this->assertEquals(['test'], $bindings);
+    }
+
+    public function test_filtro_sin_value_es_ignorado()
+    {
+        $request = Request::create('/', 'GET', [
+            'filters' => [
+                ['column' => 'status', 'operator' => '='], // Falta 'value'
+                ['column' => 'name', 'operator' => '=', 'value' => 'test'] // Este sí es válido
+            ]
+        ]);
+
+        $query = Reservation::query();
+        $result = FilterService::makeFiltersAndSorts($request, $query);
+
+        $sql = $result->toSql();
+        $bindings = $result->getBindings();
+
+        // Solo debe aplicar el filtro válido
+        $this->assertStringContainsString('where "name" = ?', $sql);
+        $this->assertEquals(['test'], $bindings);
+    }
+
+    public function test_sort_sin_column_es_ignorado()
+    {
+        $request = Request::create('/', 'GET', [
+            'sorts' => [
+                ['order' => 'asc'], // Falta 'column'
+                ['column' => 'name', 'order' => 'desc'] // Este sí es válido
+            ]
+        ]);
+
+        $query = Reservation::query();
+        $result = FilterService::makeFiltersAndSorts($request, $query);
+
+        $sql = $result->toSql();
+
+        // Solo debe aplicar el sort válido
+        $this->assertStringContainsString('order by "name" desc', $sql);
+    }
+
+    public function test_sort_sin_order_es_ignorado()
+    {
+        $request = Request::create('/', 'GET', [
+            'sorts' => [
+                ['column' => 'status'], // Falta 'order'
+                ['column' => 'name', 'order' => 'asc'] // Este sí es válido
+            ]
+        ]);
+
+        $query = Reservation::query();
+        $result = FilterService::makeFiltersAndSorts($request, $query);
+
+        $sql = $result->toSql();
+
+        // Solo debe aplicar el sort válido
+        $this->assertStringContainsString('order by "name" asc', $sql);
+    }
+
+    public function test_sort_con_order_invalido_es_ignorado()
+    {
+        $request = Request::create('/', 'GET', [
+            'sorts' => [
+                ['column' => 'status', 'order' => 'invalid'], // Order inválido
+                ['column' => 'name', 'order' => 'asc'] // Este sí es válido
+            ]
+        ]);
+
+        $query = Reservation::query();
+        $result = FilterService::makeFiltersAndSorts($request, $query);
+
+        $sql = $result->toSql();
+
+        // Solo debe aplicar el sort válido
+        $this->assertStringContainsString('order by "name" asc', $sql);
+    }
+
+    public function test_relationship_sin_table_es_ignorada()
+    {
+        $request = Request::create('/', 'GET', [
+            'sorts' => [
+                [
+                    'column' => 'name',
+                    'order' => 'asc',
+                    'relationship' => [
+                        'column' => 'name' // Falta 'table'
+                    ]
+                ],
+                ['column' => 'status', 'order' => 'desc'] // Este sí es válido
+            ]
+        ]);
+
+        $query = Reservation::query();
+        $result = FilterService::makeFiltersAndSorts($request, $query);
+
+        $sql = $result->toSql();
+
+        // Solo debe aplicar el sort válido (sin JOIN)
+        $this->assertStringContainsString('order by "status" desc', $sql);
+        $this->assertStringNotContainsString('inner join', $sql);
+    }
+
+    public function test_relationship_sin_column_es_ignorada()
+    {
+        $request = Request::create('/', 'GET', [
+            'sorts' => [
+                [
+                    'column' => 'name',
+                    'order' => 'asc',
+                    'relationship' => [
+                        'table' => 'users' // Falta 'column'
+                    ]
+                ],
+                ['column' => 'status', 'order' => 'desc'] // Este sí es válido
+            ]
+        ]);
+
+        $query = Reservation::query();
+        $result = FilterService::makeFiltersAndSorts($request, $query);
+
+        $sql = $result->toSql();
+
+        // Solo debe aplicar el sort válido (sin JOIN)
+        $this->assertStringContainsString('order by "status" desc', $sql);
+        $this->assertStringNotContainsString('inner join', $sql);
+    }
+
+    public function test_filtro_no_array_es_ignorado()
+    {
+        $request = Request::create('/', 'GET', [
+            'filters' => [
+                'invalid_string', // No es un array
+                ['column' => 'status', 'operator' => '=', 'value' => 1] // Este sí es válido
+            ]
+        ]);
+
+        $query = Reservation::query();
+        $result = FilterService::makeFiltersAndSorts($request, $query);
+
+        $sql = $result->toSql();
+        $bindings = $result->getBindings();
+
+        // Solo debe aplicar el filtro válido
+        $this->assertStringContainsString('where "status" = ?', $sql);
+        $this->assertEquals([1], $bindings);
+    }
+
+    public function test_sort_no_array_es_ignorado()
+    {
+        $request = Request::create('/', 'GET', [
+            'sorts' => [
+                'invalid_string', // No es un array
+                ['column' => 'name', 'order' => 'asc'] // Este sí es válido
+            ]
+        ]);
+
+        $query = Reservation::query();
+        $result = FilterService::makeFiltersAndSorts($request, $query);
+
+        $sql = $result->toSql();
+
+        // Solo debe aplicar el sort válido
+        $this->assertStringContainsString('order by "name" asc', $sql);
+    }
 }
 

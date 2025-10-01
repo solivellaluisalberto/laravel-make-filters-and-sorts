@@ -18,7 +18,8 @@ Ideal para construir APIs REST con filtrado y ordenamiento complejos sin escribi
 - 📊 **Ordenamiento flexible**: Simple o con relaciones mediante JOINs automáticos
 - 🚀 **Nombre de tabla dinámico**: Funciona con cualquier modelo automáticamente
 - ⚡ **Alto rendimiento**: Genera consultas SQL optimizadas
-- 🧪 **Totalmente testeado**: Incluye suite completa de tests
+- 🛡️ **Validaciones robustas**: Ignora parámetros malformados sin romper la aplicación
+- 🧪 **Totalmente testeado**: Incluye suite completa de tests con casos edge
 - 📦 **Zero config**: Funciona inmediatamente después de la instalación
 - 🔄 **Compatible con futuras versiones**: Diseñado para ser compatible con Laravel 8-12+
 
@@ -111,6 +112,39 @@ class UserController extends Controller
         { "relationship": { "table": "users", "column": "email" }, "order": "asc" }
     ]
 }
+```
+
+---
+
+## 🛡️ Validaciones de Seguridad
+
+El paquete incluye **validaciones robustas** que garantizan que la aplicación nunca se rompa, incluso con parámetros malformados:
+
+### ✅ **Validaciones Automáticas:**
+
+- **Parámetros principales**: Si `filters` o `sorts` no son arrays, se convierten automáticamente a arrays vacíos
+- **Filtros individuales**: Cada filtro debe tener `column`, `operator` y `value` - los inválidos se ignoran silenciosamente
+- **Ordenamientos individuales**: Cada sort debe tener `column` y `order` válido (`asc`/`desc`) - los inválidos se ignoran
+- **Relaciones**: Si se especifica `relationship`, debe tener `table` y `column` - las inválidas se ignoran
+
+### 🔒 **Comportamiento Seguro:**
+
+```php
+// ✅ Esto funciona perfectamente - ignora elementos inválidos
+$request = Request::create('/', 'GET', [
+    'filters' => [
+        ['column' => 'name', 'operator' => '=', 'value' => 'John'], // ✅ Válido
+        ['operator' => '=', 'value' => 'test'],                      // ❌ Ignorado (falta column)
+        'invalid_string',                                            // ❌ Ignorado (no es array)
+    ],
+    'sorts' => [
+        ['column' => 'created_at', 'order' => 'desc'],              // ✅ Válido
+        ['column' => 'name', 'order' => 'invalid'],                 // ❌ Ignorado (order inválido)
+    ]
+]);
+
+// Solo se aplican los elementos válidos - la aplicación nunca se rompe
+$query = FilterService::makeFiltersAndSorts($request, $query);
 ```
 
 ---
@@ -393,8 +427,9 @@ composer test
 
 ### Cobertura de Tests
 
-✅ **13 tests** | **26 assertions** | **0 errores**
+✅ **25 tests** | **44 assertions** | **0 errores**
 
+#### 🧪 **Tests de Funcionalidad:**
 - ✅ Filtros con operadores básicos (`=`, `!=`, `>`, `<`, `>=`, `<=`)
 - ✅ Filtro `like` con una sola columna
 - ✅ Filtro `like` con múltiples columnas (usando `|`)
@@ -407,6 +442,14 @@ composer test
 - ✅ Compatibilidad con **Eloquent Builder** y **Query Builder**
 - ✅ Combinación de filtros y ordenamientos
 - ✅ Consultas sin filtros ni ordenamientos
+
+#### 🛡️ **Tests de Validación de Seguridad:**
+- ✅ Parámetros no-array son ignorados silenciosamente
+- ✅ Filtros con claves faltantes son ignorados
+- ✅ Ordenamientos con claves faltantes son ignorados
+- ✅ Ordenamientos con `order` inválido son ignorados
+- ✅ Relaciones con claves faltantes son ignoradas
+- ✅ Elementos individuales no-array son ignorados
 
 ---
 
