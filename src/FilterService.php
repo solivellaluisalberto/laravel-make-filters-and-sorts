@@ -35,7 +35,7 @@ class FilterService
      * Validaciones de seguridad:
      * - Ignora parámetros malformados sin romper la aplicación
      * - Valida que cada filtro tenga column, operator y value
-     * - Valida que cada sort tenga column y order válido
+     * - Valida que cada sort tenga order válido (column va en raíz o en relationship)
      * - Valida relaciones con table y column requeridas
      * 
      * @param Request $request La solicitud HTTP con los parámetros filters y sorts
@@ -59,12 +59,6 @@ class FilterService
         $sorts = is_array($sorts) ? $sorts : [];
         $filters = is_array($filters) ? $filters : [];
 
-        // Obtener dinámicamente el nombre de la tabla base
-                // Esto permite que el servicio funcione con cualquier modelo
-                $tableName = $query instanceof Builder 
-                    ? $query->getModel()->getTable()  // Eloquent Builder: obtener desde el modelo
-                    : $query->from;                    // Query Builder: obtener desde la propiedad from
-
         // Procesar todos los filtros
         foreach ($filters as $filter) {
             // Validar que el filtro sea un array y tenga las claves necesarias
@@ -79,20 +73,20 @@ class FilterService
             // Aplicar el filtro según el operador
             if (in_array($operator, ['=', '!=', '>', '<', '>=', '<='])) {
                 // Operadores de comparación estándar
-                $query->where($tableName.'.'.$column, $operator, $value);
+                $query->where($column, $operator, $value);
                 
             } elseif ($operator === 'like') {
                 // Operador LIKE: permite búsqueda en múltiples columnas separadas por |
                 // Ejemplo: 'name|email' buscará en ambas columnas
                 $columns = explode('|', $column);
-                $query->where(function($query) use ($value, $columns, $tableName) {
+                $query->where(function($query) use ($value, $columns) {
                     foreach ($columns as $index => $column) {
                         if ($index === 0) {
                             // Primera columna: WHERE
-                            $query->where($tableName.'.'.$column, 'like', '%' . $value . '%');
+                            $query->where($column, 'like', '%' . $value . '%');
                         } else {
                             // Columnas adicionales: OR WHERE
-                            $query->orWhere($tableName.'.'.$column, 'like', '%' . $value . '%');
+                            $query->orWhere($column, 'like', '%' . $value . '%');
                         }
                     }
                 });
@@ -100,12 +94,12 @@ class FilterService
             } elseif ($operator === 'in') {
                 // Operador IN: verifica si el valor está en un array
                 // Ejemplo: status IN (1, 2, 3)
-                $query->whereIn($tableName.'.'.$column, $value);
+                $query->whereIn($column, $value);
                 
             } elseif ($operator === 'between') {
                 // Operador BETWEEN: verifica si el valor está en un rango
                 // Ejemplo: price BETWEEN 100 AND 500
-                $query->whereBetween($tableName.'.'.$column, $value);
+                $query->whereBetween($column, $value);
             }
         }
 
@@ -132,6 +126,12 @@ class FilterService
 
                 // Ordenamiento con relación: requiere un JOIN
                 
+                // Obtener dinámicamente el nombre de la tabla base
+                // Esto permite que el servicio funcione con cualquier modelo
+                $tableName = $query instanceof Builder 
+                    ? $query->getModel()->getTable()  // Eloquent Builder: obtener desde el modelo
+                    : $query->from;                    // Query Builder: obtener desde la propiedad from
+                
                 // Realizar el JOIN y aplicar el ordenamiento
                 // Ejemplo: JOIN users ON reservations.user_id = users.id ORDER BY users.name
                 $query->join($relationship['table'], $tableName . '.' . \Illuminate\Support\Str::singular($relationship['table']) . '_id', '=', $relationship['table'] . '.id')
@@ -141,7 +141,7 @@ class FilterService
                 if (!isset($sort['column'])) {
                     continue; // Saltar si no tiene column
                 }
-                $query->orderBy($tableName.'.'.$sort['column'], $order);
+                $query->orderBy($sort['column'], $order);
             }
         }
 
