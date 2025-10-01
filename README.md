@@ -91,12 +91,26 @@ class UserController extends Controller
 }
 ```
 
-### Ejemplo de petición HTTP
+### Ejemplo de solicitud con filtros:
 
-```http
-GET /api/users?filters[0][column]=status&filters[0][operator]==&filters[0][value]=active
-                &filters[1][column]=age&filters[1][operator]=>= &filters[1][value]=18
-                &sorts[0][column]=created_at&sorts[0][order]=desc
+```json
+{
+    "filters": [
+        { "column": "name", "operator": "like", "value": "John" },
+        { "column": "age", "operator": ">=", "value": 30 }
+    ]
+}
+```
+
+### Ejemplo de solicitud con ordenamientos:
+
+```json
+{
+    "sorts": [
+        { "column": "created_at", "order": "desc" },
+        { "relationship": { "table": "users", "column": "email" }, "order": "asc" }
+    ]
+}
 ```
 
 ---
@@ -311,13 +325,18 @@ class ProductController extends Controller
 }
 ```
 
-**Llamada a la API:**
-```bash
-curl -X GET "https://api.example.com/products?\
-filters[0][column]=category&filters[0][operator]==&filters[0][value]=electronics&\
-filters[1][column]=price&filters[1][operator]=between&filters[1][value][]=100&filters[1][value][]=500&\
-filters[2][column]=name|description&filters[2][operator]=like&filters[2][value]=laptop&\
-sorts[0][column]=price&sorts[0][order]=asc"
+**Ejemplo de solicitud:**
+```json
+{
+    "filters": [
+        { "column": "category", "operator": "=", "value": "electronics" },
+        { "column": "price", "operator": "between", "value": [100, 500] },
+        { "column": "name|description", "operator": "like", "value": "laptop" }
+    ],
+    "sorts": [
+        { "column": "price", "order": "asc" }
+    ]
+}
 ```
 
 ### Búsqueda en panel de administración
