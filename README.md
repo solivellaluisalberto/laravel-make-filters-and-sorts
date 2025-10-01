@@ -19,6 +19,7 @@ Ideal para construir APIs REST con filtrado y ordenamiento complejos sin escribi
 - 🚀 **Nombre de tabla dinámico**: Funciona con cualquier modelo automáticamente
 - ⚡ **Alto rendimiento**: Genera consultas SQL optimizadas
 - 🛡️ **Validaciones robustas**: Ignora parámetros malformados sin romper la aplicación
+- 🔒 **Prevención de ambigüedad**: Evita errores SQL automáticamente en consultas con JOINs
 - 🧪 **Totalmente testeado**: Incluye suite completa de tests con casos edge
 - 📦 **Zero config**: Funciona inmediatamente después de la instalación
 - 🔄 **Compatible con futuras versiones**: Diseñado para ser compatible con Laravel 8-12+
@@ -126,6 +127,7 @@ El paquete incluye **validaciones robustas** que garantizan que la aplicación n
 - **Filtros individuales**: Cada filtro debe tener `column`, `operator` y `value` - los inválidos se ignoran silenciosamente
 - **Ordenamientos individuales**: Cada sort debe tener `order` válido (`asc`/`desc`). Si tiene `relationship`, la `column` va dentro de `relationship`; si no, debe tener `column` en la raíz
 - **Relaciones**: Si se especifica `relationship`, debe tener `table` y `column` - las inválidas se ignoran
+- **Prevención de ambigüedad**: Todas las columnas se prefijan automáticamente con el nombre de la tabla base para evitar errores SQL
 
 ### 🔒 **Comportamiento Seguro:**
 
@@ -147,6 +149,62 @@ $request = Request::create('/', 'GET', [
 
 // Solo se aplican los elementos válidos - la aplicación nunca se rompe
 $query = FilterService::makeFiltersAndSorts($request, $query);
+```
+
+---
+
+## 🔒 Prevención de Ambigüedad de Columnas
+
+### ⚠️ **Problema Resuelto:**
+
+Cuando haces JOINs entre tablas que tienen columnas con el mismo nombre (ej: `products.name` y `categories.name`), SQL puede generar errores de "ambiguous column name".
+
+**Ejemplo del problema:**
+```sql
+-- ❌ Esto genera error: "ambiguous column name: name"
+SELECT * FROM products 
+INNER JOIN categories ON products.category_id = categories.id 
+WHERE (name LIKE '%a%' OR description LIKE '%a%')
+ORDER BY categories.name ASC
+```
+
+### ✅ **Solución Automática:**
+
+El paquete **prefija automáticamente** todas las columnas con el nombre de la tabla base para evitar ambigüedad:
+
+```sql
+-- ✅ SQL generado correctamente
+SELECT * FROM products 
+INNER JOIN categories ON products.category_id = categories.id 
+WHERE (products.name LIKE '%a%' OR products.description LIKE '%a%')
+ORDER BY categories.name ASC
+```
+
+### 🎯 **Casos de Uso Cubiertos:**
+
+- ✅ **Filtros con JOINs**: `name|description` se convierte en `products.name|products.description`
+- ✅ **Operadores básicos**: `status = 1` se convierte en `products.status = 1`
+- ✅ **Filtros IN/BETWEEN**: Se prefijan automáticamente con la tabla base
+- ✅ **Ordenamientos con relaciones**: Funcionan correctamente sin conflictos
+
+### 📝 **Ejemplo Práctico:**
+
+```php
+// ✅ Esto funciona perfectamente sin errores de ambigüedad
+$request = Request::create('/', 'GET', [
+    'filters' => [
+        ['column' => 'name|description', 'operator' => 'like', 'value' => 'laptop']
+    ],
+    'sorts' => [
+        [
+            'order' => 'asc',
+            'relationship' => ['table' => 'categories', 'column' => 'name']
+        ]
+    ]
+]);
+
+// Genera SQL sin ambigüedad automáticamente
+$query = FilterService::makeFiltersAndSorts($request, Product::query());
 ```
 
 ---
@@ -428,7 +486,7 @@ composer test
 
 ### Cobertura de Tests
 
-✅ **25 tests** | **44 assertions** | **0 errores**
+✅ **26 tests** | **48 assertions** | **0 errores**
 
 #### 🧪 **Tests de Funcionalidad:**
 - ✅ Filtros con operadores básicos (`=`, `!=`, `>`, `<`, `>=`, `<=`)
@@ -451,6 +509,11 @@ composer test
 - ✅ Ordenamientos con `order` inválido son ignorados
 - ✅ Relaciones con claves faltantes son ignoradas
 - ✅ Elementos individuales no-array son ignorados
+
+#### 🔒 **Tests de Prevención de Ambigüedad:**
+- ✅ Filtros con JOINs evitan ambigüedad de columnas automáticamente
+- ✅ Verificación de que se usan nombres de tabla prefijados
+- ✅ Confirmación de que NO se generan columnas ambiguas sin prefijo
 
 ---
 

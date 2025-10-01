@@ -4,7 +4,7 @@ namespace SolivellaLuisAlberto\LaravelMakeFiltersAndSorts;
 
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
-
+use \Illuminate\Support\Str;
 /**
  * Servicio para aplicar filtros y ordenamientos dinámicos a consultas Laravel.
  * 
@@ -38,6 +38,11 @@ class FilterService
      * - Valida que cada sort tenga order válido (column va en raíz o en relationship)
      * - Valida relaciones con table y column requeridas
      * 
+     * Prevención de ambigüedad:
+     * - Prefija automáticamente todas las columnas con el nombre de la tabla base
+     * - Evita errores SQL de "ambiguous column name" en consultas con JOINs
+     * - Funciona correctamente con filtros LIKE en múltiples columnas
+     * 
      * @param Request $request La solicitud HTTP con los parámetros filters y sorts
      * @param Builder|\Illuminate\Database\Query\Builder $query La consulta a modificar (Eloquent o Query Builder)
      * @return Builder|\Illuminate\Database\Query\Builder La consulta modificada con filtros y ordenamientos
@@ -59,6 +64,11 @@ class FilterService
         $sorts = is_array($sorts) ? $sorts : [];
         $filters = is_array($filters) ? $filters : [];
 
+        // Obtener el nombre de la tabla base una sola vez para evitar ambigüedad en JOINs
+        $tableName = $query instanceof Builder 
+            ? $query->getModel()->getTable()  // Eloquent Builder: obtener desde el modelo
+            : $query->from;                    // Query Builder: obtener desde la propiedad from
+
         // Procesar todos los filtros
         foreach ($filters as $filter) {
             // Validar que el filtro sea un array y tenga las claves necesarias
@@ -70,11 +80,6 @@ class FilterService
             $operator = $filter['operator'];
             $value = $filter['value'];
 
-            // Obtener el nombre de la tabla base para evitar ambigüedad en JOINs
-            $tableName = $query instanceof Builder 
-                ? $query->getModel()->getTable()  // Eloquent Builder: obtener desde el modelo
-                : $query->from;                    // Query Builder: obtener desde la propiedad from
-
             // Aplicar el filtro según el operador
             if (in_array($operator, ['=', '!=', '>', '<', '>=', '<='])) {
                 // Operadores de comparación estándar - prefijar con tabla para evitar ambigüedad
@@ -85,11 +90,6 @@ class FilterService
                 // Operador LIKE: permite búsqueda en múltiples columnas separadas por |
                 // Ejemplo: 'name|email' buscará en ambas columnas
                 $columns = explode('|', $column);
-                
-                // Obtener el nombre de la tabla base para evitar ambigüedad en JOINs
-                $tableName = $query instanceof Builder 
-                    ? $query->getModel()->getTable()  // Eloquent Builder: obtener desde el modelo
-                    : $query->from;                    // Query Builder: obtener desde la propiedad from
                 
                 $query->where(function($query) use ($value, $columns, $tableName) {
                     foreach ($columns as $index => $column) {
@@ -143,15 +143,9 @@ class FilterService
 
                 // Ordenamiento con relación: requiere un JOIN
                 
-                // Obtener dinámicamente el nombre de la tabla base
-                // Esto permite que el servicio funcione con cualquier modelo
-                $tableName = $query instanceof Builder 
-                    ? $query->getModel()->getTable()  // Eloquent Builder: obtener desde el modelo
-                    : $query->from;                    // Query Builder: obtener desde la propiedad from
-                
                 // Realizar el JOIN y aplicar el ordenamiento
                 // Ejemplo: JOIN users ON reservations.user_id = users.id ORDER BY users.name
-                $query->join($relationship['table'], $tableName . '.' . \Illuminate\Support\Str::singular($relationship['table']) . '_id', '=', $relationship['table'] . '.id')
+                $query->join($relationship['table'], $tableName . '.' . Str::singular($relationship['table']) . '_id', '=', $relationship['table'] . '.id')
                       ->orderBy($relationship['table'] . '.' . $relationship['column'], $order);
             } else {
                 // Ordenamiento simple por columna - debe tener column en la raíz
