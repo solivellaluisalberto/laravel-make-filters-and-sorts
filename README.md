@@ -109,7 +109,7 @@ class UserController extends Controller
 {
     "sorts": [
         { "column": "created_at", "order": "desc" },
-        { "relationship": { "table": "users", "column": "email" }, "order": "asc" }
+        { "order": "asc", "relationship": { "table": "users", "column": "email" } }
     ]
 }
 ```
@@ -124,7 +124,7 @@ El paquete incluye **validaciones robustas** que garantizan que la aplicación n
 
 - **Parámetros principales**: Si `filters` o `sorts` no son arrays, se convierten automáticamente a arrays vacíos
 - **Filtros individuales**: Cada filtro debe tener `column`, `operator` y `value` - los inválidos se ignoran silenciosamente
-- **Ordenamientos individuales**: Cada sort debe tener `column` y `order` válido (`asc`/`desc`) - los inválidos se ignoran
+- **Ordenamientos individuales**: Cada sort debe tener `order` válido (`asc`/`desc`). Si tiene `relationship`, la `column` va dentro de `relationship`; si no, debe tener `column` en la raíz
 - **Relaciones**: Si se especifica `relationship`, debe tener `table` y `column` - las inválidas se ignoran
 
 ### 🔒 **Comportamiento Seguro:**
@@ -138,8 +138,10 @@ $request = Request::create('/', 'GET', [
         'invalid_string',                                            // ❌ Ignorado (no es array)
     ],
     'sorts' => [
-        ['column' => 'created_at', 'order' => 'desc'],              // ✅ Válido
+        ['column' => 'created_at', 'order' => 'desc'],              // ✅ Válido (sort simple)
+        ['order' => 'asc', 'relationship' => ['table' => 'users', 'column' => 'name']], // ✅ Válido (sort con relación)
         ['column' => 'name', 'order' => 'invalid'],                 // ❌ Ignorado (order inválido)
+        ['order' => 'desc'],                                         // ❌ Ignorado (falta column para sort simple)
     ]
 ]);
 
@@ -312,7 +314,6 @@ ORDER BY status ASC, created_at DESC, name ASC
 {
     "sorts": [
         {
-            "column": "name",
             "order": "asc",
             "relationship": {
                 "table": "users",

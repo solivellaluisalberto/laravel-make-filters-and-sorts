@@ -389,7 +389,7 @@ class FilterServiceTest extends TestCase
     {
         $request = Request::create('/', 'GET', [
             'sorts' => [
-                ['order' => 'asc'], // Falta 'column'
+                ['order' => 'asc'], // Falta 'column' (sort simple)
                 ['column' => 'name', 'order' => 'desc'] // Este sí es válido
             ]
         ]);
@@ -401,6 +401,30 @@ class FilterServiceTest extends TestCase
 
         // Solo debe aplicar el sort válido
         $this->assertStringContainsString('order by "name" desc', $sql);
+    }
+
+    public function test_sort_con_relationship_sin_column_en_raiz_es_valido()
+    {
+        $request = Request::create('/', 'GET', [
+            'sorts' => [
+                [
+                    'order' => 'asc',
+                    'relationship' => [
+                        'table' => 'users',
+                        'column' => 'name' // La column está en relationship, no en la raíz
+                    ]
+                ]
+            ]
+        ]);
+
+        $query = Reservation::query();
+        $result = FilterService::makeFiltersAndSorts($request, $query);
+
+        $sql = $result->toSql();
+
+        // Debe aplicar el JOIN y el ordenamiento
+        $this->assertStringContainsString('inner join "users" on "reservations"."user_id" = "users"."id"', $sql);
+        $this->assertStringContainsString('order by "users"."name" asc', $sql);
     }
 
     public function test_sort_sin_order_es_ignorado()

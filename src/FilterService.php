@@ -105,12 +105,11 @@ class FilterService
 
         // Procesar todos los ordenamientos
         foreach ($sorts as $sort) {
-            // Validar que el sort sea un array y tenga las claves necesarias
-            if (!is_array($sort) || !isset($sort['column']) || !isset($sort['order'])) {
+            // Validar que el sort sea un array y tenga order
+            if (!is_array($sort) || !isset($sort['order'])) {
                 continue; // Saltar ordenamientos inválidos
             }
 
-            $column = $sort['column'];
             $order = $sort['order'];
             $relationship = $sort['relationship'] ?? null;
 
@@ -138,8 +137,11 @@ class FilterService
                 $query->join($relationship['table'], $tableName . '.' . \Illuminate\Support\Str::singular($relationship['table']) . '_id', '=', $relationship['table'] . '.id')
                       ->orderBy($relationship['table'] . '.' . $relationship['column'], $order);
             } else {
-                // Ordenamiento simple por columna
-                $query->orderBy($column, $order);
+                // Ordenamiento simple por columna - debe tener column en la raíz
+                if (!isset($sort['column'])) {
+                    continue; // Saltar si no tiene column
+                }
+                $query->orderBy($sort['column'], $order);
             }
         }
 
